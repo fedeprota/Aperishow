@@ -1,0 +1,14 @@
+# Credenziali e API keys
+CLAUDE.md
+config/.mcp.json
+.mcp.json
+.claude/settings.local.json
+
+# Environment
+.env
+.env.local
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
