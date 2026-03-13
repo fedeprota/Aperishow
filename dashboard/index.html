@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aperishow - Review Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="login-screen">
+        <div class="login-box">
+            <h1>APERISHOW</h1>
+            <p>Review Dashboard - H-Farm College</p>
+            <input type="password" id="password-input" placeholder="Password" autofocus>
+            <button id="login-btn">Accedi</button>
+            <p id="login-error" class="error hidden">Password errata</p>
+        </div>
+    </div>
+
+    <div id="app" class="hidden">
+        <header>
+            <h1>APERISHOW</h1>
+            <div class="header-controls">
+                <input type="text" id="search-input" placeholder="Cerca per nome...">
+                <button id="refresh-btn" title="Aggiorna dati">&#x1f504; Refresh</button>
+            </div>
+        </header>
+
+        <main>
+            <section id="pending-section">
+                <div class="section-header" data-toggle="pending">
+                    <h2>DA APPROVARE (<span id="pending-count">0</span>)</h2>
+                    <span class="collapse-icon">&#9660;</span>
+                </div>
+                <div id="pending-grid" class="card-grid"></div>
+            </section>
+
+            <section id="approved-section">
+                <div class="section-header" data-toggle="approved">
+                    <h2>APPROVATI (<span id="approved-count">0</span>)</h2>
+                    <span class="collapse-icon">&#9660;</span>
+                </div>
+                <div id="approved-list" class="approved-list"></div>
+            </section>
+        </main>
+
+        <!-- Modal dettaglio card -->
+        <div id="modal" class="modal hidden">
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <button class="modal-close">&times;</button>
+                <div class="modal-body">
+                    <img id="modal-img" src="" alt="Face swap image">
+                    <div class="modal-info">
+                        <h3 id="modal-name"></h3>
+                        <p class="modal-email" id="modal-email"></p>
+                        <blockquote id="modal-dream"></blockquote>
+                        <div class="modal-actions">
+                            <textarea id="modal-feedback" placeholder="Feedback (opzionale per rifiuto)..." rows="3"></textarea>
+                            <div class="modal-buttons">
+                                <button id="btn-approve" class="btn-approve">Approva</button>
+                                <button id="btn-reject" class="btn-reject">Rifiuta e rigenera</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="modal-loading" class="modal-loading hidden">
+                    <div class="spinner"></div>
+                    <p>Elaborazione in corso...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
