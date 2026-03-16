@@ -448,6 +448,18 @@ main {
     to { transform: rotate(360deg); }
 }
 
+/* ===== REFRESH LOADING ===== */
+@keyframes loading-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+#refresh-btn.loading {
+    cursor: wait;
+    pointer-events: none;
+    animation: loading-pulse 0.8s ease-in-out infinite;
+}
+
 /* ===== EMPTY STATE ===== */
 .empty-state {
     text-align: center;

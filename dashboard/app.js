@@ -39,6 +39,9 @@ function initAuth() {
 
 // ===== DATA LOADING =====
 async function loadData() {
+    const btn = document.getElementById('refresh-btn');
+    btn.disabled = true;
+    btn.classList.add('loading');
     try {
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
         if (!res.ok) throw new Error('Errore caricamento dati');
@@ -48,6 +51,9 @@ async function loadData() {
         console.error('Errore:', err);
         document.getElementById('pending-grid').innerHTML =
             '<div class="empty-state">Errore nel caricamento dati. Verifica che il workflow WF2 sia attivo su n8n.</div>';
+    } finally {
+        btn.disabled = false;
+        btn.classList.remove('loading');
     }
 }
 
