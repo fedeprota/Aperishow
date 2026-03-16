@@ -3,7 +3,7 @@ const CONFIG = {
     password: 'hfarm2026',
     webhookBase: 'https://federicoprota.app.n8n.cloud/webhook',
     endpoints: {
-        data: '/dashboard-data-poc',
+        data: '/aperishow-data',
         approve: '/approve',
         reject: '/reject'
     }
@@ -41,6 +41,7 @@ function initAuth() {
 async function loadData() {
     const btn = document.getElementById('refresh-btn');
     btn.disabled = true;
+    btn.innerHTML = '&#x23F3; Caricamento...';
     btn.classList.add('loading');
     try {
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
@@ -53,6 +54,7 @@ async function loadData() {
             '<div class="empty-state">Errore nel caricamento dati. Verifica che il workflow WF2 sia attivo su n8n.</div>';
     } finally {
         btn.disabled = false;
+        btn.innerHTML = '&#x1F504; Refresh';
         btn.classList.remove('loading');
     }
 }
