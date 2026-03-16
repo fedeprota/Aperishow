@@ -3,7 +3,7 @@ const CONFIG = {
     password: 'hfarm2026',
     webhookBase: 'https://federicoprota.app.n8n.cloud/webhook',
     endpoints: {
-        data: '/dashboard-data',
+        data: '/dashboard-data-poc',
         approve: '/approve',
         reject: '/reject'
     }
