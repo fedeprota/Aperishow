@@ -7,7 +7,7 @@ const CONFIG = {
         approve: '/approve',
         reject: '/reject'
     },
-    blockedPlaceholderId: '1ZkoL2BCMPeSUfuwFHUWTShCu9gOaCphg'
+    blockedPlaceholderId: '1JNkSv1-_auEFDbnIa5PUCStmxLEWL1GG'
 };
 
 // ===== STATE =====
