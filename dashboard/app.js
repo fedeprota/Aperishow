@@ -69,7 +69,7 @@ function renderAll() {
         return name.includes(searchTerm);
     });
 
-    const pending = filtered.filter(item => item.Status === 'pending_review');
+    const pending = filtered.filter(item => item.Status === 'pending_review' || item.Status === 'regenerating');
     const approved = filtered.filter(item => item.Status === 'approved');
 
     renderPending(pending);
@@ -87,19 +87,22 @@ function renderPending(items) {
         return;
     }
 
-    grid.innerHTML = items.map(item => `
-        <div class="card" data-uid="${item['Unique ID'] || ''}">
+    grid.innerHTML = items.map(item => {
+        const isRegenerating = item.Status === 'regenerating';
+        return `
+        <div class="card ${isRegenerating ? 'card-regenerating' : ''}" data-uid="${item['Unique ID'] || ''}">
             <img class="card-img" src="${item['FaceSwap Image URL'] || ''}"
                  alt="${item.Name || 'Immagine'}"
-                 onerror="this.style.background='#2a2a2a'; this.alt='Immagine non disponibile'">
+                 onerror="this.style.background='#e5e7eb'; this.alt='Immagine non disponibile'">
+            ${isRegenerating ? '<div class="regenerating-overlay"><div class="spinner"></div><span>Rigenerazione...</span></div>' : ''}
             <div class="card-body">
                 <div class="card-name">${item.Name || 'N/A'}</div>
                 <div class="card-dream">"${truncate(item['How far will you go?'] || '', 40)}"</div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
-    grid.querySelectorAll('.card').forEach(card => {
+    grid.querySelectorAll('.card:not(.card-regenerating)').forEach(card => {
         card.addEventListener('click', () => {
             const uid = card.dataset.uid;
             const item = allData.find(d => d['Unique ID'] === uid);
