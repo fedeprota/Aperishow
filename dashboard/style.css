@@ -527,6 +527,17 @@ main {
 
 .btn-approve:hover { background: #16a34a; }
 
+.btn-approve.btn-disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-approve.btn-disabled:hover {
+    background: #d1d5db;
+}
+
 .btn-reject {
     flex: 1;
     padding: 11px;

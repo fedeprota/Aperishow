@@ -6,7 +6,8 @@ const CONFIG = {
         data: '/aperishow-data',
         approve: '/approve',
         reject: '/reject'
-    }
+    },
+    blockedPlaceholderId: '1ZkoL2BCMPeSUfuwFHUWTShCu9gOaCphg'
 };
 
 // ===== STATE =====
@@ -130,9 +131,16 @@ function renderApproved(items) {
 }
 
 // ===== MODAL =====
+function isBlocked(item) {
+    const url = item['FaceSwap Image URL'] || '';
+    return url.includes(CONFIG.blockedPlaceholderId);
+}
+
 function openModal(item) {
     currentItem = item;
     const modal = document.getElementById('modal');
+    const approveBtn = document.getElementById('btn-approve');
+    const blocked = isBlocked(item);
 
     document.getElementById('modal-img').src = item['FaceSwap Image URL'] || '';
     document.getElementById('modal-name').textContent = item.Name || 'N/A';
@@ -140,6 +148,16 @@ function openModal(item) {
     document.getElementById('modal-dream').textContent = item['How far will you go?'] || '';
     document.getElementById('modal-feedback').value = '';
     document.getElementById('modal-loading').classList.add('hidden');
+
+    if (blocked) {
+        approveBtn.disabled = true;
+        approveBtn.classList.add('btn-disabled');
+        approveBtn.title = 'Contenuto bloccato - impossibile approvare';
+    } else {
+        approveBtn.disabled = false;
+        approveBtn.classList.remove('btn-disabled');
+        approveBtn.title = '';
+    }
 
     modal.classList.remove('hidden');
 }
