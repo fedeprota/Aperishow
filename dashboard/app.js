@@ -1,6 +1,6 @@
 // ===== CONFIGURATION =====
 const CONFIG = {
-    password: 'hfarm2026',
+    passwordHash: '1700d645ebecea7618a6960832bb49b6e76f059d5bc8d6cd1517f08e2e35313d',
     webhookBase: 'https://federicoprota.app.n8n.cloud/webhook',
     endpoints: {
         data: '/aperishow-data',
@@ -20,8 +20,9 @@ function initAuth() {
     const pwdInput = document.getElementById('password-input');
     const loginError = document.getElementById('login-error');
 
-    function tryLogin() {
-        if (pwdInput.value === CONFIG.password) {
+    async function tryLogin() {
+        const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pwdInput.value)))).map(b => b.toString(16).padStart(2, '0')).join('');
+        if (hash === CONFIG.passwordHash) {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('app').classList.remove('hidden');
             loadData();
