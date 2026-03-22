@@ -14,6 +14,7 @@ const CONFIG = {
 let allData = [];
 let currentItem = null;
 let pollInterval = null;
+let regeneratingItems = {}; // uid -> original image URL
 
 // ===== AUTH =====
 function initAuth() {
@@ -234,6 +235,8 @@ async function handleReject() {
         if (!res.ok) throw new Error('Errore rifiuto');
 
         // Update local state — will reappear as pending after regeneration
+        const uid = currentItem['Unique ID'];
+        regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
         currentItem.Status = 'regenerating';
         closeModal();
         renderAll();
@@ -249,20 +252,41 @@ async function handleReject() {
 function startPolling() {
     if (pollInterval) return;
     pollInterval = setInterval(async () => {
-        if (!allData.some(d => d.Status === 'regenerating')) {
+        if (Object.keys(regeneratingItems).length === 0) {
             clearInterval(pollInterval);
             pollInterval = null;
             return;
         }
         try {
             const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
-            if (res.ok) {
-                allData = await res.json();
-                renderAll();
-                if (!allData.some(d => d.Status === 'regenerating')) {
-                    clearInterval(pollInterval);
-                    pollInterval = null;
+            if (!res.ok) return;
+            const freshData = await res.json();
+
+            // Check each regenerating item: only mark as done when image URL changed
+            for (const uid of Object.keys(regeneratingItems)) {
+                const oldUrl = regeneratingItems[uid];
+                const fresh = freshData.find(d => String(d['Unique ID']) === String(uid));
+                if (fresh) {
+                    const newUrl = fresh['FaceSwap Image URL'] || '';
+                    if (newUrl && newUrl !== oldUrl && fresh.Status !== 'regenerating') {
+                        delete regeneratingItems[uid];
+                    }
                 }
+            }
+
+            // Update UI with fresh data, but keep local "regenerating" for items still waiting
+            for (const item of freshData) {
+                const uid = String(item['Unique ID']);
+                if (uid in regeneratingItems) {
+                    item.Status = 'regenerating';
+                }
+            }
+            allData = freshData;
+            renderAll();
+
+            if (Object.keys(regeneratingItems).length === 0) {
+                clearInterval(pollInterval);
+                pollInterval = null;
             }
         } catch(e) {}
     }, 10000);
