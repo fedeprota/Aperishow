@@ -125,13 +125,21 @@ function renderApproved(items) {
     }
 
     list.innerHTML = items.map(item => `
-        <div class="approved-row">
+        <div class="approved-row" data-uid="${item['Unique ID'] || ''}" style="cursor:pointer;">
             <span class="status-icon">&#10003;</span>
             <span class="row-name">${item.Name || 'N/A'}</span>
             <span class="row-dream">"${truncate(item['How far will you go?'] || '', 60)}"</span>
             <span class="row-time">${formatTime(item['Added Time'])}</span>
         </div>
     `).join('');
+
+    list.querySelectorAll('.approved-row').forEach(row => {
+        row.addEventListener('click', () => {
+            const uid = row.dataset.uid;
+            const item = allData.find(d => String(d['Unique ID']) === String(uid));
+            if (item) openModal(item);
+        });
+    });
 }
 
 // ===== MODAL =====
@@ -166,14 +174,20 @@ function openModal(item) {
         feedbackHistory.classList.add('hidden');
     }
 
-    if (blocked) {
-        approveBtn.disabled = true;
-        approveBtn.classList.add('btn-disabled');
-        approveBtn.title = 'Contenuto bloccato - impossibile approvare';
+    const modalActions = document.querySelector('.modal-actions');
+    if (item.Status === 'approved') {
+        modalActions.style.display = 'none';
     } else {
-        approveBtn.disabled = false;
-        approveBtn.classList.remove('btn-disabled');
-        approveBtn.title = '';
+        modalActions.style.display = '';
+        if (blocked) {
+            approveBtn.disabled = true;
+            approveBtn.classList.add('btn-disabled');
+            approveBtn.title = 'Contenuto bloccato - impossibile approvare';
+        } else {
+            approveBtn.disabled = false;
+            approveBtn.classList.remove('btn-disabled');
+            approveBtn.title = '';
+        }
     }
 
     modal.classList.remove('hidden');
