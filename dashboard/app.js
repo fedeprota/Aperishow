@@ -95,9 +95,16 @@ function renderPending(items) {
         const isRegenerating = item.Status === 'regenerating';
         return `
         <div class="card ${isRegenerating ? 'card-regenerating' : ''}" data-uid="${item['Unique ID'] || ''}">
-            <img class="card-img" src="${item['FaceSwap Image URL'] || ''}"
-                 alt="${item.Name || 'Immagine'}"
-                 onerror="this.style.background='#e5e7eb'; this.alt='Immagine non disponibile'">
+            ${item['FaceSwap Image URL'] ? `
+                <img class="card-img" src="${item['FaceSwap Image URL']}"
+                     alt="${item.Name || 'Immagine'}"
+                     onerror="this.outerHTML='<div class=\\'card-img-placeholder\\'><div class=\\'spinner\\'></div><span>Generazione in corso...</span></div>'">
+            ` : `
+                <div class="card-img-placeholder">
+                    <div class="spinner"></div>
+                    <span>Generazione in corso...</span>
+                </div>
+            `}
             ${isRegenerating ? '<div class="regenerating-overlay"><div class="spinner"></div><span>Rigenerazione...</span></div>' : ''}
             <div class="card-body">
                 <div class="card-name">${item.Name || 'N/A'}</div>
