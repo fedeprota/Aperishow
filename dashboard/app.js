@@ -13,6 +13,7 @@ const CONFIG = {
 // ===== STATE =====
 let allData = [];
 let currentItem = null;
+let pollInterval = null;
 
 // ===== AUTH =====
 function initAuth() {
@@ -236,11 +237,35 @@ async function handleReject() {
         currentItem.Status = 'regenerating';
         closeModal();
         renderAll();
+        startPolling();
     } catch (err) {
         console.error('Errore rifiuto:', err);
         loading.classList.add('hidden');
         alert('Errore durante il rifiuto. Riprova.');
     }
+}
+
+// ===== AUTO-REFRESH FOR REGENERATING CARDS =====
+function startPolling() {
+    if (pollInterval) return;
+    pollInterval = setInterval(async () => {
+        if (!allData.some(d => d.Status === 'regenerating')) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+            return;
+        }
+        try {
+            const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
+            if (res.ok) {
+                allData = await res.json();
+                renderAll();
+                if (!allData.some(d => d.Status === 'regenerating')) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+            }
+        } catch(e) {}
+    }, 10000);
 }
 
 // ===== COLLAPSIBLE SECTIONS =====
