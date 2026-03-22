@@ -52,6 +52,10 @@ async function loadData() {
         if (!res.ok) throw new Error('Errore caricamento dati');
         allData = await res.json();
         renderAll();
+        // Auto-poll if any cards are waiting for image generation
+        if (allData.some(d => (d.Status === 'pending_review' && !d['FaceSwap Image URL']) || d.Status === 'regenerating')) {
+            startPolling();
+        }
     } catch (err) {
         console.error('Errore:', err);
         document.getElementById('pending-grid').innerHTML =
@@ -269,21 +273,16 @@ async function handleReject() {
     }
 }
 
-// ===== AUTO-REFRESH FOR REGENERATING CARDS =====
+// ===== AUTO-REFRESH POLLING =====
 function startPolling() {
     if (pollInterval) return;
     pollInterval = setInterval(async () => {
-        if (Object.keys(regeneratingItems).length === 0) {
-            clearInterval(pollInterval);
-            pollInterval = null;
-            return;
-        }
         try {
             const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
             if (!res.ok) return;
             const freshData = await res.json();
 
-            // Check each regenerating item: only mark as done when image URL changed
+            // Check regenerating items: done when image URL changed
             for (const uid of Object.keys(regeneratingItems)) {
                 const oldUrl = regeneratingItems[uid];
                 const fresh = freshData.find(d => String(d['Unique ID']) === String(uid));
@@ -295,7 +294,7 @@ function startPolling() {
                 }
             }
 
-            // Update UI with fresh data, but keep local "regenerating" for items still waiting
+            // Keep local "regenerating" for items still waiting
             for (const item of freshData) {
                 const uid = String(item['Unique ID']);
                 if (uid in regeneratingItems) {
@@ -305,7 +304,10 @@ function startPolling() {
             allData = freshData;
             renderAll();
 
-            if (Object.keys(regeneratingItems).length === 0) {
+            // Stop polling if no regenerating AND no pending generation
+            const hasRegenerating = Object.keys(regeneratingItems).length > 0;
+            const hasPendingGeneration = allData.some(d => d.Status === 'pending_review' && !d['FaceSwap Image URL']);
+            if (!hasRegenerating && !hasPendingGeneration) {
                 clearInterval(pollInterval);
                 pollInterval = null;
             }
