@@ -100,6 +100,7 @@ function renderPending(items) {
             <div class="card-body">
                 <div class="card-name">${item.Name || 'N/A'}</div>
                 <div class="card-dream">"${truncate(item['How far will you go?'] || '', 40)}"</div>
+                ${item['Review Feedback'] ? '<div class="card-revision-badge">Rivista</div>' : ''}
             </div>
         </div>
     `}).join('');
@@ -149,6 +150,19 @@ function openModal(item) {
     document.getElementById('modal-dream').textContent = item['How far will you go?'] || '';
     document.getElementById('modal-feedback').value = '';
     document.getElementById('modal-loading').classList.add('hidden');
+
+    // Feedback history
+    const feedbackHistory = document.getElementById('modal-feedback-history');
+    const prevFeedback = item['Review Feedback'] || '';
+    if (prevFeedback) {
+        const entries = prevFeedback.split('\n').filter(e => e.trim());
+        feedbackHistory.innerHTML = '<h4>Cronologia revisioni</h4>' +
+            entries.map(e => '<div class="feedback-entry">' + e + '</div>').join('');
+        feedbackHistory.classList.remove('hidden');
+    } else {
+        feedbackHistory.innerHTML = '';
+        feedbackHistory.classList.add('hidden');
+    }
 
     if (blocked) {
         approveBtn.disabled = true;

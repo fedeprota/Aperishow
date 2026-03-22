@@ -592,6 +592,45 @@ main {
     animation: loading-pulse 0.8s ease-in-out infinite;
 }
 
+/* ===== FEEDBACK HISTORY ===== */
+.feedback-history {
+    margin-top: 8px;
+    padding: 12px 14px;
+    background: #fff7ed;
+    border-left: 3px solid #f59e0b;
+    border-radius: 0 10px 10px 0;
+    font-size: 13px;
+}
+
+.feedback-history h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #92400e;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.feedback-entry {
+    padding: 4px 0;
+    color: #78350f;
+    border-bottom: 1px solid rgba(245,158,11,0.15);
+    font-size: 12px;
+}
+
+.feedback-entry:last-child {
+    border-bottom: none;
+}
+
+.card-revision-badge {
+    font-size: 10px;
+    color: #f59e0b;
+    font-weight: 600;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 /* ===== EMPTY STATE ===== */
 .empty-state {
     text-align: center;
