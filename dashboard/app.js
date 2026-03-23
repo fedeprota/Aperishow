@@ -172,16 +172,16 @@ function openModal(item) {
     const faceSwapUrl = item['FaceSwap Image URL'] || '';
     const selfieUrl = item['Selfie URL'] || '';
     modalImg.src = faceSwapUrl;
-    modalImg.dataset.faceswap = faceSwapUrl;
-    modalImg.dataset.selfie = selfieUrl;
-    let showingSelfie = false;
-    toggleBtn.textContent = 'Selfie';
+    toggleBtn.classList.remove('selfie-active');
+    toggleBtn.querySelector('.toggle-label-left').classList.remove('active');
+    toggleBtn.querySelector('.toggle-label-right').classList.add('active');
     if (selfieUrl && faceSwapUrl) {
         toggleBtn.style.display = '';
         toggleBtn.onclick = () => {
-            showingSelfie = !showingSelfie;
-            modalImg.src = showingSelfie ? selfieUrl : faceSwapUrl;
-            toggleBtn.textContent = showingSelfie ? 'AI' : 'Selfie';
+            const isSelfie = toggleBtn.classList.toggle('selfie-active');
+            modalImg.src = isSelfie ? selfieUrl : faceSwapUrl;
+            toggleBtn.querySelector('.toggle-label-left').classList.toggle('active', isSelfie);
+            toggleBtn.querySelector('.toggle-label-right').classList.toggle('active', !isSelfie);
         };
     } else {
         toggleBtn.style.display = 'none';
