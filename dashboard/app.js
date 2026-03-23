@@ -97,8 +97,10 @@ function renderPending(items) {
 
     grid.innerHTML = items.map(item => {
         const isRegenerating = item.Status === 'regenerating';
+        const isGenerating = !item['FaceSwap Image URL'];
+        const isLocked = isRegenerating || isGenerating;
         return `
-        <div class="card ${isRegenerating ? 'card-regenerating' : ''}" data-uid="${item['Unique ID'] || ''}">
+        <div class="card ${isLocked ? 'card-regenerating' : ''}" data-uid="${item['Unique ID'] || ''}">
             ${item['FaceSwap Image URL'] ? `
                 <img class="card-img" src="${item['FaceSwap Image URL']}"
                      alt="${item.Name || 'Immagine'}"
