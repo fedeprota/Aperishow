@@ -587,6 +587,17 @@ main {
 
 .btn-reject:hover { background: #dc2626; }
 
+.btn-reject.btn-disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-reject.btn-disabled:hover {
+    background: #d1d5db;
+}
+
 .modal-loading {
     position: absolute;
     inset: 0;

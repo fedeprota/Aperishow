@@ -173,8 +173,8 @@ function openModal(item) {
     document.getElementById('modal-dream').textContent = item['How far will you go?'] || '';
     const feedbackInput = document.getElementById('modal-feedback');
     feedbackInput.value = '';
-    feedbackInput.removeEventListener('input', updateApproveState);
-    feedbackInput.addEventListener('input', updateApproveState);
+    feedbackInput.removeEventListener('input', updateButtonStates);
+    feedbackInput.addEventListener('input', updateButtonStates);
     document.getElementById('modal-loading').classList.add('hidden');
 
     // Feedback history
@@ -195,32 +195,42 @@ function openModal(item) {
         modalActions.style.display = 'none';
     } else {
         modalActions.style.display = '';
+        const rejectBtn = document.getElementById('btn-reject');
         if (blocked) {
             approveBtn.disabled = true;
             approveBtn.classList.add('btn-disabled');
             approveBtn.title = 'Contenuto bloccato - impossibile approvare';
+            rejectBtn.disabled = true;
+            rejectBtn.classList.add('btn-disabled');
         } else {
             approveBtn.disabled = false;
             approveBtn.classList.remove('btn-disabled');
             approveBtn.title = '';
+            rejectBtn.disabled = true;
+            rejectBtn.classList.add('btn-disabled');
         }
     }
 
     modal.classList.remove('hidden');
 }
 
-function updateApproveState() {
+function updateButtonStates() {
     const approveBtn = document.getElementById('btn-approve');
+    const rejectBtn = document.getElementById('btn-reject');
     const feedback = document.getElementById('modal-feedback').value.trim();
     if (currentItem && currentItem.Status !== 'approved' && !isBlocked(currentItem)) {
         if (feedback) {
             approveBtn.disabled = true;
             approveBtn.classList.add('btn-disabled');
-            approveBtn.title = 'Svuota il feedback per approvare, oppure clicca Rifiuta';
+            approveBtn.title = 'Svuota il feedback per approvare';
+            rejectBtn.disabled = false;
+            rejectBtn.classList.remove('btn-disabled');
         } else {
             approveBtn.disabled = false;
             approveBtn.classList.remove('btn-disabled');
             approveBtn.title = '';
+            rejectBtn.disabled = true;
+            rejectBtn.classList.add('btn-disabled');
         }
     }
 }
