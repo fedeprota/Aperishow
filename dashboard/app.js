@@ -167,7 +167,25 @@ function openModal(item) {
     const approveBtn = document.getElementById('btn-approve');
     const blocked = isBlocked(item);
 
-    document.getElementById('modal-img').src = item['FaceSwap Image URL'] || '';
+    const modalImg = document.getElementById('modal-img');
+    const toggleBtn = document.getElementById('toggle-before-after');
+    const faceSwapUrl = item['FaceSwap Image URL'] || '';
+    const selfieUrl = item['Selfie URL'] || '';
+    modalImg.src = faceSwapUrl;
+    modalImg.dataset.faceswap = faceSwapUrl;
+    modalImg.dataset.selfie = selfieUrl;
+    let showingSelfie = false;
+    toggleBtn.textContent = 'Selfie';
+    if (selfieUrl && faceSwapUrl) {
+        toggleBtn.style.display = '';
+        toggleBtn.onclick = () => {
+            showingSelfie = !showingSelfie;
+            modalImg.src = showingSelfie ? selfieUrl : faceSwapUrl;
+            toggleBtn.textContent = showingSelfie ? 'AI' : 'Selfie';
+        };
+    } else {
+        toggleBtn.style.display = 'none';
+    }
     document.getElementById('modal-name').textContent = item.Name || 'N/A';
     document.getElementById('modal-email').textContent = item.Email || '';
     document.getElementById('modal-dream').textContent = item['How far will you go?'] || '';
