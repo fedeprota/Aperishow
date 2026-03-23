@@ -269,7 +269,12 @@ async function handleApprove() {
 async function handleReject() {
     if (!currentItem) return;
 
-    const feedback = document.getElementById('modal-feedback').value;
+    const feedback = document.getElementById('modal-feedback').value.trim();
+    if (!feedback) {
+        alert('Scrivi un feedback prima di rifiutare. Il feedback serve a Gemini per migliorare l\'immagine rigenerata.');
+        return;
+    }
+
     const loading = document.getElementById('modal-loading');
     loading.classList.remove('hidden');
 
