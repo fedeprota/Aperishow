@@ -208,6 +208,28 @@ function openModal(item) {
         feedbackHistory.classList.add('hidden');
     }
 
+    // Email content for approved cards
+    const emailSection = document.getElementById('modal-email-content');
+    const emailRaw = item['Email Content'] || '';
+    if (emailRaw && item.Status === 'approved') {
+        try {
+            const e = JSON.parse(emailRaw);
+            emailSection.innerHTML =
+                '<h4>Email inviata</h4>' +
+                '<div class="email-field"><span class="email-label">Ruolo:</span> ' + (e.futureRole || '') + '</div>' +
+                '<div class="email-field"><span class="email-label">Status:</span> ' + (e.futureStatus || '') + '</div>' +
+                '<div class="email-field"><span class="email-label">Skills:</span> ' + (e.skills || '') + '</div>' +
+                '<div class="email-field"><span class="email-label">Citazione:</span> <em>' + (e.quote || '') + '</em></div>' +
+                '<div class="email-field"><span class="email-label">Perché tu:</span> ' + (e.whyYou || '') + '</div>';
+            emailSection.classList.remove('hidden');
+        } catch(err) {
+            emailSection.classList.add('hidden');
+        }
+    } else {
+        emailSection.innerHTML = '';
+        emailSection.classList.add('hidden');
+    }
+
     const modalActions = document.querySelector('.modal-actions');
     if (item.Status === 'approved') {
         modalActions.style.display = 'none';
