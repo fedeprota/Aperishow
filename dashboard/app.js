@@ -171,7 +171,10 @@ function openModal(item) {
     document.getElementById('modal-name').textContent = item.Name || 'N/A';
     document.getElementById('modal-email').textContent = item.Email || '';
     document.getElementById('modal-dream').textContent = item['How far will you go?'] || '';
-    document.getElementById('modal-feedback').value = '';
+    const feedbackInput = document.getElementById('modal-feedback');
+    feedbackInput.value = '';
+    feedbackInput.removeEventListener('input', updateApproveState);
+    feedbackInput.addEventListener('input', updateApproveState);
     document.getElementById('modal-loading').classList.add('hidden');
 
     // Feedback history
@@ -206,6 +209,22 @@ function openModal(item) {
     modal.classList.remove('hidden');
 }
 
+function updateApproveState() {
+    const approveBtn = document.getElementById('btn-approve');
+    const feedback = document.getElementById('modal-feedback').value.trim();
+    if (currentItem && currentItem.Status !== 'approved' && !isBlocked(currentItem)) {
+        if (feedback) {
+            approveBtn.disabled = true;
+            approveBtn.classList.add('btn-disabled');
+            approveBtn.title = 'Svuota il feedback per approvare, oppure clicca Rifiuta';
+        } else {
+            approveBtn.disabled = false;
+            approveBtn.classList.remove('btn-disabled');
+            approveBtn.title = '';
+        }
+    }
+}
+
 function closeModal() {
     document.getElementById('modal').classList.add('hidden');
     currentItem = null;
@@ -214,6 +233,12 @@ function closeModal() {
 // ===== ACTIONS =====
 async function handleApprove() {
     if (!currentItem) return;
+
+    const feedback = document.getElementById('modal-feedback').value.trim();
+    if (feedback) {
+        alert('Hai scritto un feedback nel campo di testo. Se vuoi rifiutare, clicca "Rifiuta e rigenera". Svuota il campo feedback per approvare.');
+        return;
+    }
 
     const loading = document.getElementById('modal-loading');
     loading.classList.remove('hidden');
