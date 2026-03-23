@@ -53,7 +53,7 @@ async function loadData() {
         allData = await res.json();
         renderAll();
         // Auto-poll if any cards are waiting for image generation
-        if (allData.some(d => (d.Status === 'pending_review' && !d['FaceSwap Image URL']) || d.Status === 'regenerating')) {
+        if (allData.some(d => d.Status === 'generating' || d.Status === 'regenerating' || (d.Status === 'pending_review' && !d['FaceSwap Image URL']))) {
             startPolling();
         }
     } catch (err) {
@@ -77,7 +77,7 @@ function renderAll() {
         return name.includes(searchTerm);
     });
 
-    const pending = filtered.filter(item => item.Status === 'pending_review' || item.Status === 'regenerating');
+    const pending = filtered.filter(item => ['pending_review', 'regenerating', 'generating', 'blocked'].includes(item.Status));
     const approved = filtered.filter(item => item.Status === 'approved');
 
     renderPending(pending);
@@ -97,7 +97,7 @@ function renderPending(items) {
 
     grid.innerHTML = items.map(item => {
         const isRegenerating = item.Status === 'regenerating';
-        const isGenerating = !item['FaceSwap Image URL'];
+        const isGenerating = item.Status === 'generating' || (!item['FaceSwap Image URL'] && item.Status !== 'blocked');
         const isLocked = isRegenerating || isGenerating;
         return `
         <div class="card ${isLocked ? 'card-regenerating' : ''}" data-uid="${item['Unique ID'] || ''}">
@@ -388,7 +388,7 @@ function startPolling() {
 
             // Stop polling if no regenerating AND no pending generation
             const hasRegenerating = Object.keys(regeneratingItems).length > 0;
-            const hasPendingGeneration = allData.some(d => d.Status === 'pending_review' && !d['FaceSwap Image URL']);
+            const hasPendingGeneration = allData.some(d => d.Status === 'generating' || (d.Status === 'pending_review' && !d['FaceSwap Image URL']));
             if (!hasRegenerating && !hasPendingGeneration) {
                 clearInterval(pollInterval);
                 pollInterval = null;
