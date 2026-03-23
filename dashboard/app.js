@@ -346,8 +346,9 @@ function formatTime(timeStr) {
 }
 
 function getRowNumber(item) {
+    if (item.row_number) return item.row_number;
     const idx = allData.indexOf(item);
-    return idx >= 0 ? idx + 2 : 0; // +2: header row + 0-indexed
+    return idx >= 0 ? idx + 2 : 0;
 }
 
 // ===== INIT =====
