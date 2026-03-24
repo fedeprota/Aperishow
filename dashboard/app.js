@@ -265,6 +265,12 @@ function openModal(item) {
             approveBtn.title = 'Contenuto bloccato - impossibile approvare';
             rejectBtn.disabled = true;
             rejectBtn.classList.add('btn-disabled');
+            // Allow reject when feedback is written (to regenerate blocked content)
+            feedbackInput.addEventListener('input', () => {
+                const hasText = feedbackInput.value.trim().length > 0;
+                rejectBtn.disabled = !hasText;
+                rejectBtn.classList.toggle('btn-disabled', !hasText);
+            });
         } else {
             approveBtn.disabled = false;
             approveBtn.classList.remove('btn-disabled');
