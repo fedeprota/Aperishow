@@ -244,13 +244,7 @@ function openModal(item) {
         modalActions.style.display = 'none';
         manualSection.classList.add('hidden');
     } else if (needsManual) {
-        modalActions.style.display = '';
-        approveBtn.disabled = true;
-        approveBtn.classList.add('btn-disabled');
-        approveBtn.title = 'Scrivi un prompt manuale per generare l\'immagine';
-        const rejectBtn = document.getElementById('btn-reject');
-        rejectBtn.disabled = true;
-        rejectBtn.classList.add('btn-disabled');
+        modalActions.style.display = 'none';
         manualSection.classList.remove('hidden');
         document.getElementById('manual-prompt-input').value = '';
         const manualBtn = document.getElementById('btn-manual');
