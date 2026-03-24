@@ -5,9 +5,11 @@ const CONFIG = {
     endpoints: {
         data: '/aperishow-data',
         approve: '/approve',
-        reject: '/reject'
+        reject: '/reject',
+        manualPrompt: '/manual-prompt'
     },
-    blockedPlaceholderId: '1JNkSv1-_auEFDbnIa5PUCStmxLEWL1GG'
+    blockedPlaceholderId: '1JNkSv1-_auEFDbnIa5PUCStmxLEWL1GG',
+    manualPromptPlaceholderId: '1CPb409gyx7QN93DQUasGXX1uNekTDI1D'
 };
 
 // ===== STATE =====
@@ -77,7 +79,7 @@ function renderAll() {
         return name.includes(searchTerm);
     });
 
-    const pending = filtered.filter(item => ['pending_review', 'regenerating', 'blocked'].includes(item.Status));
+    const pending = filtered.filter(item => ['pending_review', 'regenerating', 'blocked', 'needs_manual_prompt'].includes(item.Status));
     const approved = filtered.filter(item => item.Status === 'approved');
 
     renderPending(pending);
@@ -161,6 +163,10 @@ function isBlocked(item) {
     return url.includes(CONFIG.blockedPlaceholderId);
 }
 
+function isNeedsManualPrompt(item) {
+    return item.Status === 'needs_manual_prompt';
+}
+
 function openModal(item) {
     currentItem = item;
     const modal = document.getElementById('modal');
@@ -231,9 +237,32 @@ function openModal(item) {
     }
 
     const modalActions = document.querySelector('.modal-actions');
+    const manualSection = document.getElementById('manual-prompt-section');
+    const needsManual = isNeedsManualPrompt(item);
+
     if (item.Status === 'approved') {
         modalActions.style.display = 'none';
+        manualSection.classList.add('hidden');
+    } else if (needsManual) {
+        modalActions.style.display = '';
+        approveBtn.disabled = true;
+        approveBtn.classList.add('btn-disabled');
+        approveBtn.title = 'Scrivi un prompt manuale per generare l\'immagine';
+        const rejectBtn = document.getElementById('btn-reject');
+        rejectBtn.disabled = true;
+        rejectBtn.classList.add('btn-disabled');
+        manualSection.classList.remove('hidden');
+        document.getElementById('manual-prompt-input').value = '';
+        const manualBtn = document.getElementById('btn-manual');
+        manualBtn.disabled = true;
+        manualBtn.classList.add('btn-disabled');
+        document.getElementById('manual-prompt-input').addEventListener('input', () => {
+            const hasText = document.getElementById('manual-prompt-input').value.trim().length > 0;
+            manualBtn.disabled = !hasText;
+            manualBtn.classList.toggle('btn-disabled', !hasText);
+        });
     } else {
+        manualSection.classList.add('hidden');
         modalActions.style.display = '';
         const rejectBtn = document.getElementById('btn-reject');
         if (blocked) {
@@ -281,6 +310,40 @@ function closeModal() {
 }
 
 // ===== ACTIONS =====
+async function handleManualPrompt() {
+    if (!currentItem) return;
+    const prompt = document.getElementById('manual-prompt-input').value.trim();
+    if (!prompt) {
+        alert('Scrivi un prompt prima di generare.');
+        return;
+    }
+    const loading = document.getElementById('modal-loading');
+    loading.classList.remove('hidden');
+    try {
+        const selfieUrl = currentItem['Selfie URL'] || '';
+        const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.manualPrompt, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                rowNumber: getRowNumber(currentItem),
+                prompt: prompt,
+                selfieUrl: selfieUrl
+            })
+        });
+        if (!res.ok) throw new Error('Errore generazione manuale');
+        const uid = currentItem['Unique ID'];
+        regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
+        currentItem.Status = 'regenerating';
+        closeModal();
+        renderAll();
+        startPolling();
+    } catch (err) {
+        console.error('Errore prompt manuale:', err);
+        loading.classList.add('hidden');
+        alert('Errore durante la generazione manuale. Riprova.');
+    }
+}
+
 async function handleApprove() {
     if (!currentItem) return;
 
@@ -449,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector('.modal-close').addEventListener('click', closeModal);
     document.getElementById('btn-approve').addEventListener('click', handleApprove);
     document.getElementById('btn-reject').addEventListener('click', handleReject);
+    document.getElementById('btn-manual').addEventListener('click', handleManualPrompt);
 
     // ESC to close modal
     document.addEventListener('keydown', (e) => {

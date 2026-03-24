@@ -673,6 +673,57 @@ main {
     font-size: 14px;
 }
 
+/* ===== MANUAL PROMPT SECTION ===== */
+.manual-prompt-section {
+    margin-bottom: 12px;
+}
+
+#manual-prompt-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(234,179,8,0.4);
+    border-radius: 10px;
+    background: #fefce8;
+    color: #713f12;
+    font-size: 14px;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 10px;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#manual-prompt-input:focus {
+    border-color: #eab308;
+    box-shadow: 0 0 0 3px rgba(234,179,8,0.15);
+}
+
+.btn-manual {
+    width: 100%;
+    padding: 11px;
+    border: none;
+    border-radius: 10px;
+    background: #eab308;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-manual:hover { background: #ca8a04; }
+
+.btn-manual.btn-disabled {
+    background: #d1d5db;
+    color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.btn-manual.btn-disabled:hover {
+    background: #d1d5db;
+}
+
 .spinner {
     width: 36px;
     height: 36px;
