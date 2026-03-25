@@ -139,12 +139,12 @@ function renderApproved(items) {
         return;
     }
 
-    list.innerHTML = items.map(item => `
+    list.innerHTML = [...items].reverse().map(item => `
         <div class="approved-row" data-uid="${item['Unique ID'] || ''}" style="cursor:pointer;">
             <span class="status-icon">&#10003;</span>
             <span class="row-name">${item.Name || 'N/A'}</span>
             <span class="row-dream">"${truncate(item['How far will you go?'] || '', 60)}"</span>
-            <span class="row-time">${formatTime(item['Added Time'])}</span>
+            <span class="row-time">${formatDateTime(item['Added Time'])}</span>
         </div>
     `).join('');
 
@@ -485,6 +485,17 @@ function formatTime(timeStr) {
     try {
         const date = new Date(timeStr);
         return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return '';
+    }
+}
+
+function formatDateTime(timeStr) {
+    if (!timeStr) return '';
+    try {
+        const date = new Date(timeStr);
+        return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' }) + ' ' +
+               date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
     } catch {
         return '';
     }
