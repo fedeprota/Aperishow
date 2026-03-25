@@ -97,7 +97,7 @@ function renderPending(items) {
         return;
     }
 
-    grid.innerHTML = items.map(item => {
+    grid.innerHTML = [...items].reverse().map(item => {
         const isRegenerating = item.Status === 'regenerating';
         const isGenerating = !item['FaceSwap Image URL'] && item.Status !== 'blocked';
         const isLocked = isRegenerating || isGenerating;
