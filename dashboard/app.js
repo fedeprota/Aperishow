@@ -1,7 +1,7 @@
 // ===== CONFIGURATION =====
 const CONFIG = {
     passwordHash: '1700d645ebecea7618a6960832bb49b6e76f059d5bc8d6cd1517f08e2e35313d',
-    webhookBase: 'https://federicoprota.app.n8n.cloud/webhook',
+    webhookBase: 'https://marketinghfc.app.n8n.cloud/webhook',
     endpoints: {
         data: '/aperishow-data',
         approve: '/approve',
