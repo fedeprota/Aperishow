@@ -6,7 +6,8 @@ const CONFIG = {
         data: '/aperishow-data',
         approve: '/approve',
         reject: '/reject',
-        manualPrompt: '/manual-prompt'
+        manualPrompt: '/manual-prompt',
+        regenerateMain: '/aperishow-main'
     },
     blockedPlaceholderId: '1JNkSv1-_auEFDbnIa5PUCStmxLEWL1GG',
     manualPromptPlaceholderId: '1CPb409gyx7QN93DQUasGXX1uNekTDI1D'
@@ -344,6 +345,52 @@ async function handleManualPrompt() {
     }
 }
 
+async function rerunMainPipeline(rowNumber, { silent = false } = {}) {
+    const rn = Number(rowNumber);
+    if (!rn || rn < 2) {
+        alert('Numero riga non valido.');
+        return false;
+    }
+    try {
+        const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.regenerateMain, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ changeType: 'INSERT_ROW', row_number: rn, source: 'dashboard-rerun' })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!silent) alert('Pipeline rilanciata per la riga ' + rn + '. Torna tra qualche secondo.');
+        return true;
+    } catch (err) {
+        console.error('Errore re-run main pipeline:', err);
+        alert('Errore rilancio pipeline. Riprova.');
+        return false;
+    }
+}
+
+async function handleRerunFromModal() {
+    if (!currentItem) return;
+    const rn = getRowNumber(currentItem);
+    if (!confirm('Rilancio la main pipeline per la riga ' + rn + ' (' + (currentItem.Name || '') + ')?\n\nQuesto rigenera l\'immagine da zero usando il selfie originale.')) return;
+    const uid = currentItem['Unique ID'];
+    regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
+    currentItem.Status = 'regenerating';
+    const ok = await rerunMainPipeline(rn, { silent: true });
+    if (ok) {
+        closeModal();
+        renderAll();
+        startPolling();
+    } else {
+        delete regeneratingItems[uid];
+    }
+}
+
+async function handleRerunFromHeader() {
+    const input = prompt('Numero riga Google Sheet da rilanciare (es. 42):');
+    if (!input) return;
+    await rerunMainPipeline(input.trim());
+    setTimeout(loadData, 3000);
+}
+
 async function handleApprove() {
     if (!currentItem) return;
 
@@ -524,6 +571,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-approve').addEventListener('click', handleApprove);
     document.getElementById('btn-reject').addEventListener('click', handleReject);
     document.getElementById('btn-manual').addEventListener('click', handleManualPrompt);
+    document.getElementById('btn-rerun-modal').addEventListener('click', handleRerunFromModal);
+    document.getElementById('btn-rerun-header').addEventListener('click', handleRerunFromHeader);
 
     // ESC to close modal
     document.addEventListener('keydown', (e) => {

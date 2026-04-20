@@ -153,6 +153,47 @@ header h1 {
     color: #9ca3af;
 }
 
+/* ===== RERUN BUTTONS ===== */
+.btn-rerun-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    color: #4b5563;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-rerun-header:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #1f2937;
+}
+
+.btn-rerun-modal {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 9px;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    background: transparent;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+.btn-rerun-modal:hover {
+    background: #fff7ed;
+    border-color: #fb923c;
+    color: #c2410c;
+}
+
 /* ===== REFRESH BUTTON ===== */
 #refresh-btn {
     display: flex;
