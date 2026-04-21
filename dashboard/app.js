@@ -80,14 +80,42 @@ function renderAll() {
         return name.includes(searchTerm);
     });
 
+    const toGenerate = filtered.filter(item => item.Status === 'needs_generation');
     const pending = filtered.filter(item => ['pending_review', 'regenerating', 'blocked', 'needs_manual_prompt'].includes(item.Status));
     const approved = filtered.filter(item => item.Status === 'approved');
 
+    renderToGenerate(toGenerate);
     renderPending(pending);
     renderApproved(approved);
 
+    document.getElementById('togenerate-count').textContent = toGenerate.length;
     document.getElementById('pending-count').textContent = pending.length;
     document.getElementById('approved-count').textContent = approved.length;
+}
+
+function renderToGenerate(items) {
+    const grid = document.getElementById('togenerate-grid');
+    if (!grid) return;
+    if (items.length === 0) {
+        grid.innerHTML = '<div class="empty-state">Nessuna richiesta da generare</div>';
+        return;
+    }
+    grid.innerHTML = [...items].reverse().map(item => `
+        <div class="card card-togenerate" data-uid="${item['Unique ID'] || ''}">
+            <div class="card-togenerate-body">
+                <div class="card-togenerate-name">${item.Name || 'N/A'}</div>
+                <div class="card-togenerate-dream">"${item['How far will you go?'] || '(prompt vuoto)'}"</div>
+                <div class="card-togenerate-cta">&#x1F528; Clicca per generare</div>
+            </div>
+        </div>
+    `).join('');
+    grid.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => {
+            const uid = card.dataset.uid;
+            const item = allData.find(d => d['Unique ID'] === uid);
+            if (item) openGenerateModal(item);
+        });
+    });
 }
 
 function renderPending(items) {
@@ -168,9 +196,79 @@ function isNeedsManualPrompt(item) {
     return item.Status === 'needs_manual_prompt';
 }
 
-function openModal(item) {
+function openGenerateModal(item) {
     currentItem = item;
     const modal = document.getElementById('modal');
+
+    // Hide sections not relevant to the generate flow
+    document.getElementById('modal-img').style.display = 'none';
+    document.getElementById('toggle-before-after').style.display = 'none';
+    document.getElementById('modal-feedback-history').classList.add('hidden');
+    document.getElementById('modal-email-content').classList.add('hidden');
+    document.getElementById('manual-prompt-section').classList.add('hidden');
+    document.querySelector('.modal-actions').style.display = 'none';
+
+    document.getElementById('modal-name').textContent = item.Name || 'N/A';
+    document.getElementById('modal-email').textContent = item.Email || '';
+    document.getElementById('modal-dream').style.display = 'none';
+
+    // Show generate section
+    const genSection = document.getElementById('generate-section');
+    genSection.classList.remove('hidden');
+    const dreamInput = document.getElementById('generate-dream-input');
+    dreamInput.value = item['How far will you go?'] || '';
+
+    document.getElementById('modal-loading').classList.add('hidden');
+    modal.classList.remove('hidden');
+}
+
+async function handleGenerate() {
+    if (!currentItem) return;
+    const dream = document.getElementById('generate-dream-input').value.trim();
+    if (!dream) {
+        alert('Scrivi un prompt prima di generare.');
+        return;
+    }
+    const loading = document.getElementById('modal-loading');
+    loading.classList.remove('hidden');
+    try {
+        const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.regenerateMain, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                changeType: 'INSERT_ROW',
+                row_number: getRowNumber(currentItem),
+                dream: dream,
+                source: 'dashboard-generate'
+            })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const uid = currentItem['Unique ID'];
+        regeneratingItems[uid] = '';
+        currentItem.Status = 'regenerating';
+        closeModal();
+        renderAll();
+        startPolling();
+    } catch (err) {
+        console.error('Errore generazione:', err);
+        loading.classList.add('hidden');
+        alert('Errore durante la generazione. Riprova.');
+    }
+}
+
+function openModal(item) {
+    // Route to the correct modal based on card status
+    if (item.Status === 'needs_generation') {
+        return openGenerateModal(item);
+    }
+
+    currentItem = item;
+    const modal = document.getElementById('modal');
+
+    // Reset generate section visibility (in case we came from a generate modal)
+    document.getElementById('generate-section').classList.add('hidden');
+    document.getElementById('modal-img').style.display = '';
+    document.getElementById('modal-dream').style.display = '';
     const approveBtn = document.getElementById('btn-approve');
     const blocked = isBlocked(item);
 
@@ -509,15 +607,18 @@ function startPolling() {
 
 // ===== COLLAPSIBLE SECTIONS =====
 function initCollapsible() {
+    const targets = {
+        togenerate: 'togenerate-grid',
+        pending: 'pending-grid',
+        approved: 'approved-list'
+    };
     document.querySelectorAll('.section-header').forEach(header => {
         header.addEventListener('click', () => {
-            const targetId = header.dataset.toggle;
-            const content = targetId === 'pending'
-                ? document.getElementById('pending-grid')
-                : document.getElementById('approved-list');
-
+            const key = header.dataset.toggle;
+            const el = document.getElementById(targets[key] || 'pending-grid');
+            if (!el) return;
             header.classList.toggle('collapsed');
-            content.style.display = header.classList.contains('collapsed') ? 'none' : '';
+            el.style.display = header.classList.contains('collapsed') ? 'none' : '';
         });
     });
 }
@@ -573,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-manual').addEventListener('click', handleManualPrompt);
     document.getElementById('btn-rerun-modal').addEventListener('click', handleRerunFromModal);
     document.getElementById('btn-rerun-header').addEventListener('click', handleRerunFromHeader);
+    document.getElementById('btn-generate').addEventListener('click', handleGenerate);
 
     // ESC to close modal
     document.addEventListener('keydown', (e) => {

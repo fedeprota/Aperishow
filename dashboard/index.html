@@ -31,6 +31,14 @@
         </header>
 
         <main>
+            <section id="togenerate-section">
+                <div class="section-header" data-toggle="togenerate">
+                    <h2>DA GENERARE (<span id="togenerate-count">0</span>)</h2>
+                    <span class="collapse-icon">&#9660;</span>
+                </div>
+                <div id="togenerate-grid" class="card-grid"></div>
+            </section>
+
             <section id="pending-section">
                 <div class="section-header" data-toggle="pending">
                     <h2>DA APPROVARE (<span id="pending-count">0</span>)</h2>
@@ -73,6 +81,11 @@
                         <div id="manual-prompt-section" class="manual-prompt-section hidden">
                             <textarea id="manual-prompt-input" placeholder="Scrivi il prompt in inglese per generare l'immagine..." rows="3"></textarea>
                             <button id="btn-manual" class="btn-manual btn-disabled" disabled>Genera manualmente</button>
+                        </div>
+                        <div id="generate-section" class="generate-section hidden">
+                            <label for="generate-dream-input" class="generate-label">Prompt del candidato (puoi modificarlo se necessario):</label>
+                            <textarea id="generate-dream-input" rows="5" placeholder="How far will you go?"></textarea>
+                            <button id="btn-generate" class="btn-generate">&#x1F528; Genera immagine</button>
                         </div>
                         <div class="modal-actions">
                             <textarea id="modal-feedback" placeholder="Feedback..." rows="3"></textarea>

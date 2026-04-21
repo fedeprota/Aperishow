@@ -153,6 +153,96 @@ header h1 {
     color: #9ca3af;
 }
 
+/* ===== DA GENERARE CARDS ===== */
+.card-togenerate {
+    background: linear-gradient(135deg,#fffbea,#fff6d1);
+    border: 1px solid #facc15;
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    display: flex;
+    flex-direction: column;
+    min-height: 150px;
+}
+.card-togenerate:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(250,204,21,.25);
+}
+.card-togenerate-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    gap: 8px;
+}
+.card-togenerate-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: #1f2937;
+}
+.card-togenerate-dream {
+    font-size: 13px;
+    color: #4b5563;
+    font-style: italic;
+    flex: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+}
+.card-togenerate-cta {
+    margin-top: auto;
+    font-size: 12px;
+    font-weight: 600;
+    color: #854d0e;
+    text-align: right;
+}
+
+/* ===== GENERATE SECTION (MODAL) ===== */
+.generate-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+.generate-label {
+    font-size: 13px;
+    color: #4b5563;
+    font-weight: 500;
+}
+.generate-section textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+    box-sizing: border-box;
+}
+.generate-section textarea:focus {
+    outline: none;
+    border-color: #facc15;
+    box-shadow: 0 0 0 3px rgba(250,204,21,.2);
+}
+.btn-generate {
+    padding: 11px;
+    border: none;
+    border-radius: 10px;
+    background: #f59e0b;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 6px rgba(245,158,11,.3);
+}
+.btn-generate:hover {
+    background: #d97706;
+    box-shadow: 0 4px 12px rgba(245,158,11,.4);
+}
+
 /* ===== RERUN BUTTONS ===== */
 .btn-rerun-header {
     display: flex;
