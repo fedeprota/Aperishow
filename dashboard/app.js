@@ -86,7 +86,7 @@ async function loadData() {
         allData = applyOverrides(await res.json());
         renderAll();
         // Auto-poll if any cards are waiting for image generation
-        if (allData.some(d => d.Status === 'regenerating' || (d.Status === 'pending_review' && !d['FaceSwap Image URL']))) {
+        if (allData.some(d => ['regenerating', 'generating', 'approving'].includes(d.Status) || (d.Status === 'pending_review' && !d['FaceSwap Image URL']))) {
             startPolling();
         }
     } catch (err) {
@@ -111,8 +111,8 @@ function renderAll() {
     });
 
     const toGenerate = filtered.filter(item => item.Status === 'needs_generation');
-    const pending = filtered.filter(item => ['pending_review', 'regenerating', 'blocked', 'needs_manual_prompt'].includes(item.Status));
-    const approved = filtered.filter(item => item.Status === 'approved');
+    const pending = filtered.filter(item => ['pending_review', 'regenerating', 'generating', 'blocked', 'needs_manual_prompt'].includes(item.Status));
+    const approved = filtered.filter(item => ['approved', 'approving'].includes(item.Status));
 
     renderToGenerate(toGenerate);
     renderPending(pending);
@@ -628,10 +628,11 @@ function startPolling() {
             allData = applyOverrides(freshData);
             renderAll();
 
-            // Stop polling if no regenerating AND no pending generation
+            // Stop polling if no in-flight work remains
             const hasRegenerating = Object.keys(regeneratingItems).length > 0;
-            const hasPendingGeneration = allData.some(d => d.Status === 'pending_review' && !d['FaceSwap Image URL']);
-            if (!hasRegenerating && !hasPendingGeneration) {
+            const hasOverride = Object.keys(overrideStatus).length > 0;
+            const hasInFlightStatus = allData.some(d => ['regenerating', 'generating', 'approving'].includes(d.Status) || (d.Status === 'pending_review' && !d['FaceSwap Image URL']));
+            if (!hasRegenerating && !hasOverride && !hasInFlightStatus) {
                 clearInterval(pollInterval);
                 pollInterval = null;
             }
