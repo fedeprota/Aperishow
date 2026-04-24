@@ -22,9 +22,7 @@ let regeneratingItems = {}; // uid -> original image URL
 // Prevents the polling loop from reverting the card's local status.
 //   overrideStatus: { [uid]: { status: 'approved'|'regenerating', until: <epoch-ms> } }
 let overrideStatus = {};
-const OVERRIDE_TTL_MS = 90 * 1000; // 90s — pipeline is usually done within this
-// Global re-entrancy flag: only one action-handler may run at a time.
-let actionInFlight = false;
+const OVERRIDE_TTL_MS = 180 * 1000; // 3 min — covers slow Gemini retries before sheet catches up
 
 // ===== AUTH =====
 function initAuth() {
@@ -74,28 +72,6 @@ function applyOverrides(list) {
         item.Status = ov.status;
     }
     return list;
-}
-
-// ===== ACTION-GUARD =====
-// Wraps an async click handler so only one action runs at a time.
-// Also marks the clicked button as busy for visual feedback.
-function guardedHandler(fn) {
-    return async function(ev) {
-        if (actionInFlight) return;
-        actionInFlight = true;
-        const btn = ev && ev.currentTarget;
-        const wasDisabled = btn && btn.disabled;
-        if (btn) { btn.disabled = true; btn.classList.add('btn-disabled'); }
-        try {
-            await fn.call(this, ev);
-        } finally {
-            actionInFlight = false;
-            if (btn && !wasDisabled && document.body.contains(btn)) {
-                btn.disabled = false;
-                btn.classList.remove('btn-disabled');
-            }
-        }
-    };
 }
 
 // ===== DATA LOADING =====
@@ -273,61 +249,42 @@ function openGenerateModal(item) {
     const dreamInput = document.getElementById('generate-dream-input');
     dreamInput.value = item['How far will you go?'] || '';
 
-    // Re-enable the Genera button (in case a previous attempt left it disabled)
-    const btn = document.getElementById('btn-generate');
-    btn.disabled = false;
-    btn.classList.remove('btn-disabled');
-    btn.dataset.busy = '';
-
     document.getElementById('modal-loading').classList.add('hidden');
     modal.classList.remove('hidden');
 }
 
 async function handleGenerate() {
     if (!currentItem) return;
-    const btn = document.getElementById('btn-generate');
-
-    // Re-entrancy guard: block immediate second click even before async starts
-    if (btn.dataset.busy === '1') return;
-    btn.dataset.busy = '1';
-    btn.disabled = true;
-    btn.classList.add('btn-disabled');
-
     const dream = document.getElementById('generate-dream-input').value.trim();
     if (!dream) {
         alert('Scrivi un prompt prima di generare.');
-        btn.disabled = false;
-        btn.classList.remove('btn-disabled');
-        btn.dataset.busy = '';
         return;
     }
-    const loading = document.getElementById('modal-loading');
-    loading.classList.remove('hidden');
+    const uid = String(currentItem['Unique ID'] || '');
+    const rowNumber = getRowNumber(currentItem);
+    regeneratingItems[uid] = '';
+    setOverride(uid, 'regenerating');
+    currentItem.Status = 'regenerating';
+    closeModal();
+    renderAll();
+    startPolling();
+
     try {
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.regenerateMain, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 changeType: 'INSERT_ROW',
-                row_number: getRowNumber(currentItem),
-                dream: dream,
+                row_number: rowNumber,
+                dream,
                 source: 'dashboard-generate'
             })
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const uid = currentItem['Unique ID'];
-        regeneratingItems[uid] = '';
-        setOverride(String(uid), 'regenerating');
-        currentItem.Status = 'regenerating';
-        closeModal();
-        renderAll();
-        startPolling();
     } catch (err) {
         console.error('Errore generazione:', err);
-        loading.classList.add('hidden');
-        btn.disabled = false;
-        btn.classList.remove('btn-disabled');
-        btn.dataset.busy = '';
+        delete regeneratingItems[uid];
+        delete overrideStatus[uid];
         alert('Errore durante la generazione. Riprova.');
     }
 }
@@ -493,30 +450,30 @@ async function handleManualPrompt() {
         alert('Scrivi un prompt prima di generare.');
         return;
     }
-    const loading = document.getElementById('modal-loading');
-    loading.classList.remove('hidden');
+    // Capture & commit UI state BEFORE the fetch so operator sees instant feedback
+    // and the currentItem=null from closeModal prevents same-card double-click.
+    const uid = String(currentItem['Unique ID'] || '');
+    const rowNumber = getRowNumber(currentItem);
+    const selfieUrl = currentItem['Selfie URL'] || '';
+    const prevFaceSwap = currentItem['FaceSwap Image URL'] || '';
+    regeneratingItems[uid] = prevFaceSwap;
+    setOverride(uid, 'regenerating');
+    currentItem.Status = 'regenerating';
+    closeModal();
+    renderAll();
+    startPolling();
     try {
-        const selfieUrl = currentItem['Selfie URL'] || '';
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.manualPrompt, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                rowNumber: getRowNumber(currentItem),
-                prompt: prompt,
-                selfieUrl: selfieUrl
-            })
+            body: JSON.stringify({ rowNumber, prompt, selfieUrl })
         });
-        if (!res.ok) throw new Error('Errore generazione manuale');
-        const uid = currentItem['Unique ID'];
-        regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
-        setOverride(String(uid), 'regenerating');
-        currentItem.Status = 'regenerating';
-        closeModal();
-        renderAll();
-        startPolling();
+        if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch (err) {
         console.error('Errore prompt manuale:', err);
-        loading.classList.add('hidden');
+        // rollback
+        delete regeneratingItems[uid];
+        delete overrideStatus[uid];
         alert('Errore durante la generazione manuale. Riprova.');
     }
 }
@@ -547,18 +504,17 @@ async function handleRerunFromModal() {
     if (!currentItem) return;
     const rn = getRowNumber(currentItem);
     if (!confirm('Rilancio la main pipeline per la riga ' + rn + ' (' + (currentItem.Name || '') + ')?\n\nQuesto rigenera l\'immagine da zero usando il selfie originale.')) return;
-    const uid = currentItem['Unique ID'];
+    const uid = String(currentItem['Unique ID'] || '');
     regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
-    setOverride(String(uid), 'regenerating');
+    setOverride(uid, 'regenerating');
     currentItem.Status = 'regenerating';
+    closeModal();
+    renderAll();
+    startPolling();
     const ok = await rerunMainPipeline(rn, { silent: true });
-    if (ok) {
-        closeModal();
-        renderAll();
-        startPolling();
-    } else {
+    if (!ok) {
         delete regeneratingItems[uid];
-        delete overrideStatus[String(uid)];
+        delete overrideStatus[uid];
     }
 }
 
@@ -578,31 +534,32 @@ async function handleApprove() {
         return;
     }
 
-    const loading = document.getElementById('modal-loading');
-    loading.classList.remove('hidden');
+    // Optimistic update BEFORE the fetch. Closing the modal also sets
+    // currentItem=null, so a rapid second click is a no-op. Parallel
+    // clicks on different rows are unaffected (different currentItem).
+    const uid = String(currentItem['Unique ID'] || '');
+    const rowNumber = getRowNumber(currentItem);
+    const prevStatus = currentItem.Status;
+    setOverride(uid, 'approved');
+    currentItem.Status = 'approved';
+    closeModal();
+    renderAll();
 
     try {
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.approve, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                uniqueId: currentItem['Unique ID'],
-                rowNumber: getRowNumber(currentItem)
-            })
+            body: JSON.stringify({ uniqueId: uid, rowNumber })
         });
-
-        if (!res.ok) throw new Error('Errore approvazione');
-
-        // Update local state + override so polling doesn't revert it
-        const uid = String(currentItem['Unique ID'] || '');
-        setOverride(uid, 'approved');
-        currentItem.Status = 'approved';
-        closeModal();
-        renderAll();
+        if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch (err) {
         console.error('Errore approvazione:', err);
-        loading.classList.add('hidden');
-        alert('Errore durante l\'approvazione. Riprova.');
+        // rollback
+        delete overrideStatus[uid];
+        const row = allData.find(d => String(d['Unique ID']) === uid);
+        if (row) row.Status = prevStatus;
+        renderAll();
+        alert('Errore durante l\'approvazione. La card è tornata in "Da approvare".');
     }
 }
 
@@ -615,33 +572,27 @@ async function handleReject() {
         return;
     }
 
-    const loading = document.getElementById('modal-loading');
-    loading.classList.remove('hidden');
+    const uid = String(currentItem['Unique ID'] || '');
+    const rowNumber = getRowNumber(currentItem);
+    const prevFaceSwap = currentItem['FaceSwap Image URL'] || '';
+    regeneratingItems[uid] = prevFaceSwap;
+    setOverride(uid, 'regenerating');
+    currentItem.Status = 'regenerating';
+    closeModal();
+    renderAll();
+    startPolling();
 
     try {
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.reject, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                uniqueId: currentItem['Unique ID'],
-                rowNumber: getRowNumber(currentItem),
-                feedback: feedback
-            })
+            body: JSON.stringify({ uniqueId: uid, rowNumber, feedback })
         });
-
-        if (!res.ok) throw new Error('Errore rifiuto');
-
-        // Update local state — will reappear as pending after regeneration
-        const uid = currentItem['Unique ID'];
-        regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
-        setOverride(String(uid), 'regenerating');
-        currentItem.Status = 'regenerating';
-        closeModal();
-        renderAll();
-        startPolling();
+        if (!res.ok) throw new Error('HTTP ' + res.status);
     } catch (err) {
         console.error('Errore rifiuto:', err);
-        loading.classList.add('hidden');
+        delete regeneratingItems[uid];
+        delete overrideStatus[uid];
         alert('Errore durante il rifiuto. Riprova.');
     }
 }
@@ -752,12 +703,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal events
     document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
     document.querySelector('.modal-close').addEventListener('click', closeModal);
-    document.getElementById('btn-approve').addEventListener('click', guardedHandler(handleApprove));
-    document.getElementById('btn-reject').addEventListener('click', guardedHandler(handleReject));
-    document.getElementById('btn-manual').addEventListener('click', guardedHandler(handleManualPrompt));
-    document.getElementById('btn-rerun-modal').addEventListener('click', guardedHandler(handleRerunFromModal));
-    document.getElementById('btn-rerun-header').addEventListener('click', guardedHandler(handleRerunFromHeader));
-    document.getElementById('btn-generate').addEventListener('click', guardedHandler(handleGenerate));
+    document.getElementById('btn-approve').addEventListener('click', handleApprove);
+    document.getElementById('btn-reject').addEventListener('click', handleReject);
+    document.getElementById('btn-manual').addEventListener('click', handleManualPrompt);
+    document.getElementById('btn-rerun-modal').addEventListener('click', handleRerunFromModal);
+    document.getElementById('btn-rerun-header').addEventListener('click', handleRerunFromHeader);
+    document.getElementById('btn-generate').addEventListener('click', handleGenerate);
 
     // ESC to close modal
     document.addEventListener('keydown', (e) => {
