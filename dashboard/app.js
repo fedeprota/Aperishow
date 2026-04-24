@@ -200,13 +200,14 @@ function openGenerateModal(item) {
     currentItem = item;
     const modal = document.getElementById('modal');
 
-    // Hide sections not relevant to the generate flow
+    // Hide every non-generate UI element
     document.getElementById('modal-img').style.display = 'none';
     document.getElementById('toggle-before-after').style.display = 'none';
     document.getElementById('modal-feedback-history').classList.add('hidden');
     document.getElementById('modal-email-content').classList.add('hidden');
     document.getElementById('manual-prompt-section').classList.add('hidden');
     document.querySelector('.modal-actions').style.display = 'none';
+    document.getElementById('btn-rerun-modal').style.display = 'none';
 
     document.getElementById('modal-name').textContent = item.Name || 'N/A';
     document.getElementById('modal-email').textContent = item.Email || '';
@@ -218,15 +219,32 @@ function openGenerateModal(item) {
     const dreamInput = document.getElementById('generate-dream-input');
     dreamInput.value = item['How far will you go?'] || '';
 
+    // Re-enable the Genera button (in case a previous attempt left it disabled)
+    const btn = document.getElementById('btn-generate');
+    btn.disabled = false;
+    btn.classList.remove('btn-disabled');
+    btn.dataset.busy = '';
+
     document.getElementById('modal-loading').classList.add('hidden');
     modal.classList.remove('hidden');
 }
 
 async function handleGenerate() {
     if (!currentItem) return;
+    const btn = document.getElementById('btn-generate');
+
+    // Re-entrancy guard: block immediate second click even before async starts
+    if (btn.dataset.busy === '1') return;
+    btn.dataset.busy = '1';
+    btn.disabled = true;
+    btn.classList.add('btn-disabled');
+
     const dream = document.getElementById('generate-dream-input').value.trim();
     if (!dream) {
         alert('Scrivi un prompt prima di generare.');
+        btn.disabled = false;
+        btn.classList.remove('btn-disabled');
+        btn.dataset.busy = '';
         return;
     }
     const loading = document.getElementById('modal-loading');
@@ -252,6 +270,9 @@ async function handleGenerate() {
     } catch (err) {
         console.error('Errore generazione:', err);
         loading.classList.add('hidden');
+        btn.disabled = false;
+        btn.classList.remove('btn-disabled');
+        btn.dataset.busy = '';
         alert('Errore durante la generazione. Riprova.');
     }
 }
@@ -269,6 +290,7 @@ function openModal(item) {
     document.getElementById('generate-section').classList.add('hidden');
     document.getElementById('modal-img').style.display = '';
     document.getElementById('modal-dream').style.display = '';
+    document.getElementById('btn-rerun-modal').style.display = '';
     const approveBtn = document.getElementById('btn-approve');
     const blocked = isBlocked(item);
 
