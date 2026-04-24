@@ -18,6 +18,13 @@ let allData = [];
 let currentItem = null;
 let pollInterval = null;
 let regeneratingItems = {}; // uid -> original image URL
+// Actions acknowledged by webhook but not yet reflected by the sheet.
+// Prevents the polling loop from reverting the card's local status.
+//   overrideStatus: { [uid]: { status: 'approved'|'regenerating', until: <epoch-ms> } }
+let overrideStatus = {};
+const OVERRIDE_TTL_MS = 90 * 1000; // 90s — pipeline is usually done within this
+// Global re-entrancy flag: only one action-handler may run at a time.
+let actionInFlight = false;
 
 // ===== AUTH =====
 function initAuth() {
@@ -44,6 +51,53 @@ function initAuth() {
     });
 }
 
+// ===== OVERRIDE HELPERS =====
+function setOverride(uid, status) {
+    if (!uid) return;
+    overrideStatus[uid] = { status, until: Date.now() + OVERRIDE_TTL_MS };
+}
+function applyOverrides(list) {
+    const now = Date.now();
+    // prune expired
+    for (const k of Object.keys(overrideStatus)) {
+        if (overrideStatus[k].until < now) delete overrideStatus[k];
+    }
+    for (const item of list) {
+        const uid = String(item['Unique ID'] || '');
+        const ov = overrideStatus[uid];
+        if (!ov) continue;
+        // If the server has moved past the override (e.g. sheet now says approved), drop it
+        if (ov.status === 'approved' && item.Status === 'approved') {
+            delete overrideStatus[uid];
+            continue;
+        }
+        item.Status = ov.status;
+    }
+    return list;
+}
+
+// ===== ACTION-GUARD =====
+// Wraps an async click handler so only one action runs at a time.
+// Also marks the clicked button as busy for visual feedback.
+function guardedHandler(fn) {
+    return async function(ev) {
+        if (actionInFlight) return;
+        actionInFlight = true;
+        const btn = ev && ev.currentTarget;
+        const wasDisabled = btn && btn.disabled;
+        if (btn) { btn.disabled = true; btn.classList.add('btn-disabled'); }
+        try {
+            await fn.call(this, ev);
+        } finally {
+            actionInFlight = false;
+            if (btn && !wasDisabled && document.body.contains(btn)) {
+                btn.disabled = false;
+                btn.classList.remove('btn-disabled');
+            }
+        }
+    };
+}
+
 // ===== DATA LOADING =====
 async function loadData() {
     const btn = document.getElementById('refresh-btn');
@@ -53,7 +107,7 @@ async function loadData() {
     try {
         const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
         if (!res.ok) throw new Error('Errore caricamento dati');
-        allData = await res.json();
+        allData = applyOverrides(await res.json());
         renderAll();
         // Auto-poll if any cards are waiting for image generation
         if (allData.some(d => d.Status === 'regenerating' || (d.Status === 'pending_review' && !d['FaceSwap Image URL']))) {
@@ -263,6 +317,7 @@ async function handleGenerate() {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const uid = currentItem['Unique ID'];
         regeneratingItems[uid] = '';
+        setOverride(String(uid), 'regenerating');
         currentItem.Status = 'regenerating';
         closeModal();
         renderAll();
@@ -454,6 +509,7 @@ async function handleManualPrompt() {
         if (!res.ok) throw new Error('Errore generazione manuale');
         const uid = currentItem['Unique ID'];
         regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
+        setOverride(String(uid), 'regenerating');
         currentItem.Status = 'regenerating';
         closeModal();
         renderAll();
@@ -493,6 +549,7 @@ async function handleRerunFromModal() {
     if (!confirm('Rilancio la main pipeline per la riga ' + rn + ' (' + (currentItem.Name || '') + ')?\n\nQuesto rigenera l\'immagine da zero usando il selfie originale.')) return;
     const uid = currentItem['Unique ID'];
     regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
+    setOverride(String(uid), 'regenerating');
     currentItem.Status = 'regenerating';
     const ok = await rerunMainPipeline(rn, { silent: true });
     if (ok) {
@@ -501,6 +558,7 @@ async function handleRerunFromModal() {
         startPolling();
     } else {
         delete regeneratingItems[uid];
+        delete overrideStatus[String(uid)];
     }
 }
 
@@ -535,7 +593,9 @@ async function handleApprove() {
 
         if (!res.ok) throw new Error('Errore approvazione');
 
-        // Update local state
+        // Update local state + override so polling doesn't revert it
+        const uid = String(currentItem['Unique ID'] || '');
+        setOverride(uid, 'approved');
         currentItem.Status = 'approved';
         closeModal();
         renderAll();
@@ -574,6 +634,7 @@ async function handleReject() {
         // Update local state — will reappear as pending after regeneration
         const uid = currentItem['Unique ID'];
         regeneratingItems[uid] = currentItem['FaceSwap Image URL'] || '';
+        setOverride(String(uid), 'regenerating');
         currentItem.Status = 'regenerating';
         closeModal();
         renderAll();
@@ -613,7 +674,7 @@ function startPolling() {
                     item.Status = 'regenerating';
                 }
             }
-            allData = freshData;
+            allData = applyOverrides(freshData);
             renderAll();
 
             // Stop polling if no regenerating AND no pending generation
@@ -691,12 +752,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal events
     document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
     document.querySelector('.modal-close').addEventListener('click', closeModal);
-    document.getElementById('btn-approve').addEventListener('click', handleApprove);
-    document.getElementById('btn-reject').addEventListener('click', handleReject);
-    document.getElementById('btn-manual').addEventListener('click', handleManualPrompt);
-    document.getElementById('btn-rerun-modal').addEventListener('click', handleRerunFromModal);
-    document.getElementById('btn-rerun-header').addEventListener('click', handleRerunFromHeader);
-    document.getElementById('btn-generate').addEventListener('click', handleGenerate);
+    document.getElementById('btn-approve').addEventListener('click', guardedHandler(handleApprove));
+    document.getElementById('btn-reject').addEventListener('click', guardedHandler(handleReject));
+    document.getElementById('btn-manual').addEventListener('click', guardedHandler(handleManualPrompt));
+    document.getElementById('btn-rerun-modal').addEventListener('click', guardedHandler(handleRerunFromModal));
+    document.getElementById('btn-rerun-header').addEventListener('click', guardedHandler(handleRerunFromHeader));
+    document.getElementById('btn-generate').addEventListener('click', guardedHandler(handleGenerate));
 
     // ESC to close modal
     document.addEventListener('keydown', (e) => {
