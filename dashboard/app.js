@@ -49,30 +49,62 @@ function initAuth() {
     });
 }
 
-// ===== OVERRIDE HELPERS =====
+// ===== STATE RECONCILIATION =====
 function setOverride(uid, status) {
     if (!uid) return;
     overrideStatus[uid] = { status, until: Date.now() + OVERRIDE_TTL_MS };
 }
-function applyOverrides(list) {
+
+// Reconcile fresh server data with local optimistic state.
+// Decides whether to force a card's status to 'regenerating'/'approved' (because we
+// just acted on it and the server hasn't caught up yet) or to drop the local
+// state entirely (because the server has now caught up).
+// Replaces the previous applyOverrides() + scattered polling logic.
+function reconcileLocalState(list) {
     const now = Date.now();
-    // prune expired
+    // 1) Drop expired overrides
     for (const k of Object.keys(overrideStatus)) {
         if (overrideStatus[k].until < now) delete overrideStatus[k];
     }
     for (const item of list) {
         const uid = String(item['Unique ID'] || '');
-        const ov = overrideStatus[uid];
-        if (!ov) continue;
-        // If the server has moved past the override (e.g. sheet now says approved), drop it
-        if (ov.status === 'approved' && item.Status === 'approved') {
-            delete overrideStatus[uid];
-            continue;
+        if (!uid) continue;
+        const serverStatus = item.Status;
+        const newUrl = String(item['FaceSwap Image URL'] || '').trim();
+        const hasFS = !!newUrl;
+        const stillRunning = ['regenerating', 'generating'].includes(serverStatus);
+
+        // 2) Auto-clear regeneratingItems when the server has finished
+        if (uid in regeneratingItems) {
+            const oldUrl = regeneratingItems[uid];
+            if (hasFS && newUrl !== oldUrl && !stillRunning) {
+                delete regeneratingItems[uid];
+            }
         }
-        item.Status = ov.status;
+
+        // 3) Auto-clear or apply overrideStatus based on server state
+        const ov = overrideStatus[uid];
+        if (ov) {
+            const caughtUp =
+                (ov.status === 'approved' && serverStatus === 'approved') ||
+                (ov.status === 'regenerating' && hasFS && !stillRunning);
+            if (caughtUp) {
+                delete overrideStatus[uid];
+            } else {
+                item.Status = ov.status;
+            }
+        }
+
+        // 4) If regeneratingItems still has this uid (i.e. pipeline not yet
+        //    confirmed via server), keep forcing the regenerating placeholder
+        if (uid in regeneratingItems) {
+            item.Status = 'regenerating';
+        }
     }
     return list;
 }
+// Back-compat alias (other call sites untouched)
+const applyOverrides = reconcileLocalState;
 
 // ===== DATA LOADING =====
 async function loadData() {
@@ -611,26 +643,7 @@ function startPolling() {
             });
             if (!res.ok) return;
             const freshData = await res.json();
-
-            // Check regenerating items: done when image URL changed
-            for (const uid of Object.keys(regeneratingItems)) {
-                const oldUrl = regeneratingItems[uid];
-                const fresh = freshData.find(d => String(d['Unique ID']) === String(uid));
-                if (fresh) {
-                    const newUrl = fresh['FaceSwap Image URL'] || '';
-                    if (newUrl && newUrl !== oldUrl && fresh.Status !== 'regenerating') {
-                        delete regeneratingItems[uid];
-                    }
-                }
-            }
-
-            // Keep local "regenerating" for items still waiting
-            for (const item of freshData) {
-                const uid = String(item['Unique ID']);
-                if (uid in regeneratingItems) {
-                    item.Status = 'regenerating';
-                }
-            }
+            // reconcileLocalState handles BOTH regeneratingItems cleanup AND override apply/clear.
             allData = applyOverrides(freshData);
             renderAll();
 
