@@ -81,7 +81,10 @@ async function loadData() {
     btn.innerHTML = '&#x23F3; Caricamento...';
     btn.classList.add('loading');
     try {
-        const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
+        const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data + '?_t=' + Date.now(), {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+        });
         if (!res.ok) throw new Error('Errore caricamento dati');
         allData = applyOverrides(await res.json());
         renderAll();
@@ -602,7 +605,10 @@ function startPolling() {
     if (pollInterval) return;
     pollInterval = setInterval(async () => {
         try {
-            const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data);
+            const res = await fetch(CONFIG.webhookBase + CONFIG.endpoints.data + '?_t=' + Date.now(), {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+            });
             if (!res.ok) return;
             const freshData = await res.json();
 
